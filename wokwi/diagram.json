@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "author": "SmartAccess",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 230, "left": 0, "attrs": {} },
+    { "type": "wokwi-lcd1602", "id": "lcd", "top": 0, "left": 0, "attrs": { "pins": "i2c" } },
+    { "type": "wokwi-servo", "id": "servo", "top": 240, "left": 420, "attrs": {} },
+    { "type": "wokwi-led", "id": "ledVerde", "top": 30, "left": 430, "attrs": { "color": "green" } },
+    { "type": "wokwi-led", "id": "ledVermelho", "top": 30, "left": 500, "attrs": { "color": "red" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": 120, "left": 410, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": 120, "left": 480, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-buzzer", "id": "buzzer", "top": 10, "left": 590, "attrs": { "volume": "0.2" } },
+    { "type": "wokwi-pushbutton", "id": "btnModo", "top": 470, "left": 420, "attrs": { "color": "yellow", "key": "m", "label": "MODO" } },
+    { "type": "wokwi-pushbutton", "id": "btnAdmin", "top": 560, "left": 20, "attrs": { "color": "blue", "key": "1", "label": "CARTAO ADMIN" } },
+    { "type": "wokwi-pushbutton", "id": "btnCartao1", "top": 560, "left": 150, "attrs": { "color": "green", "key": "2", "label": "CARTAO 1" } },
+    { "type": "wokwi-pushbutton", "id": "btnCartao2", "top": 560, "left": 280, "attrs": { "color": "grey", "key": "3", "label": "CARTAO 2" } }
+  ],
+  "connections": [
+    [ "lcd:GND", "uno:GND.1", "black", [] ],
+    [ "lcd:VCC", "uno:5V", "red", [] ],
+    [ "lcd:SDA", "uno:A4", "blue", [] ],
+    [ "lcd:SCL", "uno:A5", "purple", [] ],
+
+    [ "servo:PWM", "uno:3", "orange", [] ],
+    [ "servo:V+", "uno:5V", "red", [] ],
+    [ "servo:GND", "uno:GND.2", "black", [] ],
+
+    [ "uno:5", "r1:1", "green", [] ],
+    [ "r1:2", "ledVerde:A", "green", [] ],
+    [ "ledVerde:C", "uno:GND.2", "black", [] ],
+
+    [ "uno:6", "r2:1", "red", [] ],
+    [ "r2:2", "ledVermelho:A", "red", [] ],
+    [ "ledVermelho:C", "uno:GND.2", "black", [] ],
+
+    [ "uno:4", "buzzer:2", "gold", [] ],
+    [ "buzzer:1", "uno:GND.2", "black", [] ],
+
+    [ "uno:7", "btnModo:1.l", "yellow", [] ],
+    [ "btnModo:2.r", "uno:GND.3", "black", [] ],
+
+    [ "uno:A0", "btnAdmin:1.l", "blue", [] ],
+    [ "btnAdmin:2.r", "uno:GND.3", "black", [] ],
+    [ "uno:A1", "btnCartao1:1.l", "green", [] ],
+    [ "btnCartao1:2.r", "uno:GND.3", "black", [] ],
+    [ "uno:A2", "btnCartao2:1.l", "gray", [] ],
+    [ "btnCartao2:2.r", "uno:GND.3", "black", [] ]
+  ],
+  "dependencies": {}
+}

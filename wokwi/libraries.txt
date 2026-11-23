@@ -1,0 +1,3 @@
+# Bibliotecas usadas pelo SmartAccess no Wokwi
+LiquidCrystal I2C
+Servo
