@@ -340,10 +340,18 @@ bool foiPressionado(Botao& b) {
 //  MONITOR SERIAL
 // ============================================================================
 void imprimirAjuda() {
-  Serial.println(F("Comandos: LISTA, AJUDA"));
 #if MODO_SIMULACAO
-  Serial.println(F("Simulacao: digite um UID (ex.: 12 AB 34 CD) para simular um cartao."));
-  Serial.println(F("Botoes: AZUL=Admin  VERDE=Cartao 1  CINZA=Cartao 2  AMARELO=Modo"));
+  Serial.println(F("------------------------------------------------------------"));
+  Serial.println(F("COMO TESTAR: clique nos BOTOES coloridos do circuito"));
+  Serial.println(F("  VERDE   = encostar Cartao 1 (autorizado)   -> porta abre"));
+  Serial.println(F("  CINZA   = encostar Cartao 2 (desconhecido) -> acesso negado"));
+  Serial.println(F("  AZUL    = encostar cartao ADMIN            -> menu cadastro"));
+  Serial.println(F("  AMARELO = no menu admin, troca CADASTRAR/EXCLUIR"));
+  Serial.println(F("Opcional aqui no Serial: LISTA (ver cadastrados) ou um UID"));
+  Serial.println(F("completo de uma vez, ex.: 55 66 77 88"));
+  Serial.println(F("------------------------------------------------------------"));
+#else
+  Serial.println(F("Comandos: LISTA (ver cadastrados), AJUDA"));
 #endif
 }
 
@@ -395,9 +403,14 @@ byte lerSerial(byte* uid) {
 #else
       (void)uid;   // no modo fisico, UID so vem do leitor RFID
 #endif
-      Serial.print(F("Comando desconhecido: "));
-      Serial.println(bufferSerial);
-      imprimirAjuda();
+      Serial.print(F("Nao entendi: \""));
+      Serial.print(bufferSerial);
+      Serial.println(F("\""));
+#if MODO_SIMULACAO
+      Serial.println(F("  Dica: use os BOTOES coloridos do circuito para simular cartoes."));
+      Serial.println(F("  Para digitar um cartao, escreva os 4 pares DE UMA VEZ, ex.: 55 66 77 88"));
+#endif
+      Serial.println(F("  Comandos: LISTA (ver cadastrados), AJUDA"));
     }
   }
   return 0;
