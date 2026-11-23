@@ -66,6 +66,11 @@ const byte PINO_SIM_CARTAO1 = A1;  // Cartao 1 (ja vem cadastrado)
 const byte PINO_SIM_CARTAO2 = A2;  // Cartao 2 (comeca desconhecido)
 #endif
 
+// LED RGB de 4 perninhas: perna comprida no GND -> false (catodo comum)
+//                        perna comprida no 5V  -> true  (anodo comum)
+// LEDs separados (verde e vermelho comuns): deixar false.
+const bool LED_ANODO_COMUM = false;
+
 const byte ENDERECO_LCD = 0x27;     // Trocar para 0x3F se o LCD nao mostrar nada
 
 // ============================================================================
@@ -77,6 +82,7 @@ const unsigned long TEMPO_BLOQUEIO     = 30000UL;
 const unsigned long TEMPO_ADMIN        = 15000UL;
 const unsigned long TEMPO_MSG_ADMIN    = 1500UL;
 const unsigned long TEMPO_DEBOUNCE     = 50UL;
+const unsigned long TEMPO_PRESSAO_LONGA = 3000UL;  // segurar MODO 3 s = entra/sai do admin
 
 const byte MAX_TENTATIVAS = 3;
 
@@ -163,6 +169,7 @@ bool adminMensagemAtiva = false;     // Resultado de uma operacao sendo exibido
 unsigned long adminMensagemDesde = 0;
 
 unsigned int ultimoSegundoMostrado = 0;
+bool pressaoLongaUsada = false;      // evita repetir a acao enquanto o botao segue apertado
 
 char bufferSerial[24];
 byte tamanhoBufferSerial = 0;
@@ -192,9 +199,15 @@ void mostrarTela(const char* linha1, const char* linha2) {
 // ============================================================================
 //  SINAIS (LEDs e BUZZER)
 // ============================================================================
+// Liga/desliga um LED levando em conta se o LED RGB e anodo comum (logica invertida)
+void ligarLed(byte pino, bool ligado) {
+  if (LED_ANODO_COMUM) ligado = !ligado;
+  digitalWrite(pino, ligado ? HIGH : LOW);
+}
+
 void apagarLeds() {
-  digitalWrite(PINO_LED_VERDE, LOW);
-  digitalWrite(PINO_LED_VERMELHO, LOW);
+  ligarLed(PINO_LED_VERDE, false);
+  ligarLed(PINO_LED_VERMELHO, false);
 }
 
 // tone() com duracao nao bloqueia o programa
@@ -347,11 +360,13 @@ void imprimirAjuda() {
   Serial.println(F("  CINZA   = encostar Cartao 2 (desconhecido) -> acesso negado"));
   Serial.println(F("  AZUL    = encostar cartao ADMIN            -> menu cadastro"));
   Serial.println(F("  AMARELO = no menu admin, troca CADASTRAR/EXCLUIR"));
+  Serial.println(F("            segurar 3 s = entra/sai do menu admin"));
   Serial.println(F("Opcional aqui no Serial: LISTA (ver cadastrados) ou um UID"));
   Serial.println(F("completo de uma vez, ex.: 55 66 77 88"));
   Serial.println(F("------------------------------------------------------------"));
 #else
   Serial.println(F("Comandos: LISTA (ver cadastrados), AJUDA"));
+  Serial.println(F("Segurar o botao MODO 3 s = entra/sai do menu admin"));
 #endif
 }
 
@@ -457,8 +472,8 @@ void entrarPortaAberta() {
   mudarEstado(PORTA_ABERTA);
   tentativasInvalidas = 0;
   servoTrava.write(ANGULO_ABERTO);
-  digitalWrite(PINO_LED_VERMELHO, LOW);
-  digitalWrite(PINO_LED_VERDE, HIGH);
+  ligarLed(PINO_LED_VERMELHO, false);
+  ligarLed(PINO_LED_VERDE, true);
   bip(2000, 150);
   mostrarTela("ACESSO LIBERADO", "Porta aberta");
   Serial.println(F("-> ACESSO LIBERADO"));
@@ -466,8 +481,8 @@ void entrarPortaAberta() {
 
 void entrarAcessoNegado(const char* linha2) {
   mudarEstado(ACESSO_NEGADO);
-  digitalWrite(PINO_LED_VERDE, LOW);
-  digitalWrite(PINO_LED_VERMELHO, HIGH);
+  ligarLed(PINO_LED_VERDE, false);
+  ligarLed(PINO_LED_VERMELHO, true);
   bip(300, 500);
   mostrarTela("ACESSO NEGADO", linha2);
   Serial.println(F("-> ACESSO NEGADO"));
@@ -477,7 +492,7 @@ void entrarBloqueio() {
   mudarEstado(BLOQUEADO);
   tentativasInvalidas = 0;
   ultimoSegundoMostrado = 0;   // forca atualizar a contagem na tela
-  digitalWrite(PINO_LED_VERDE, LOW);
+  ligarLed(PINO_LED_VERDE, false);
   bip(200, 1500);
   mostrarTela("  BLOQUEADO!", "");
   Serial.println(F("-> SISTEMA BLOQUEADO por excesso de tentativas"));
@@ -610,6 +625,26 @@ void tratarBotaoModo() {
   Serial.println(adminModoExcluir ? F("Admin: modo EXCLUIR") : F("Admin: modo CADASTRAR"));
 }
 
+// Segurar o botao MODO por 3 s: entra no admin (ou sai dele).
+// Alternativa ao cartao ADMIN, caso a dupla tenha poucos cartoes.
+void verificarPressaoLonga() {
+  if (botaoModo.estadoEstavel == HIGH) {   // botao solto
+    pressaoLongaUsada = false;
+    return;
+  }
+  if (pressaoLongaUsada) return;
+  if (millis() - botaoModo.ultimaMudanca < TEMPO_PRESSAO_LONGA) return;
+
+  pressaoLongaUsada = true;
+  if (estadoAtual == AGUARDANDO) {
+    Serial.println(F("Botao MODO segurado: entrando no admin."));
+    entrarAdmin();
+  } else if (estadoAtual == MODO_ADMIN) {
+    Serial.println(F("Botao MODO segurado: saindo do admin."));
+    entrarAguardando();
+  }
+}
+
 // Temporizadores da maquina de estados (tudo com millis, sem delay)
 void atualizarEstado() {
   unsigned long agora = millis();
@@ -638,7 +673,7 @@ void atualizarEstado() {
         escreverLinha(1, linha2);
       }
       // LED vermelho pisca durante o bloqueio
-      digitalWrite(PINO_LED_VERMELHO, ((decorrido / 500UL) % 2 == 0) ? HIGH : LOW);
+      ligarLed(PINO_LED_VERMELHO, (decorrido / 500UL) % 2 == 0);
       break;
     }
 
@@ -653,7 +688,7 @@ void atualizarEstado() {
         mostrarMenuAdmin();
       }
       // LED verde pisca para indicar modo de manutencao
-      digitalWrite(PINO_LED_VERDE, ((agora / 300UL) % 2 == 0) ? HIGH : LOW);
+      ligarLed(PINO_LED_VERDE, (agora / 300UL) % 2 == 0);
       break;
 
     default:
@@ -705,7 +740,8 @@ void setup() {
     mostrarTela("MEMORIA APAGADA", "Solte o botao");
     Serial.println(F("Cadastros apagados (botao MODO pressionado ao ligar)."));
     bip(1000, 500);
-    delay(2000);
+    while (digitalRead(PINO_BOTAO_MODO) == LOW) { }   // espera soltar
+    delay(1000);
   }
 
   iniciarMemoria();
@@ -720,6 +756,7 @@ void setup() {
 
 void loop() {
   if (foiPressionado(botaoModo)) tratarBotaoModo();
+  verificarPressaoLonga();
 
   byte uid[4];
   byte tamanho = lerCartao(uid);
